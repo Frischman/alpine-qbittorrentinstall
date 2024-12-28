@@ -11,7 +11,9 @@ alpine 3.18 系统一键安装qbittorrent-install  4.39
     wget https://raw.githubusercontent.com/Frischman/alpine-3.18-qbittorrent-install-4.39/main/qbittorrent-install -O qbittorrent-install.sh && chmod +x qbittorrent-install.sh && bash qbittorrent-install.sh
 
  3.重启服务
+    
     rc-service qbittorrent restart
 
  4.查看服务状态
+    
     rc-service qbittorrent status
