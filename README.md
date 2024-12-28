@@ -2,9 +2,10 @@
 alpine 3.18 系统一键安装qbittorrent-install  4.39
 
 安装说明：
- 更新包服务并安装依赖
- 
- apk update&&apk add shadow wget curl bash
+1. 更新包服务并安装依赖
+     
+    apk update&&apk add shadow wget curl bash
+
 
 2.下载并执行脚本
  
