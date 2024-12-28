@@ -1,0 +1,130 @@
+#!/bin/bash
+
+set -e
+
+# 定义变量
+DOWNLOAD_URL="https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-4.3.9_v1.2.15/x86_64-qbittorrent-nox"
+INSTALL_PATH="/root/x86_64-qbittorrent-nox"
+SERVICE_FILE="/etc/init.d/qbittorrent"
+DOWNLOAD_DIR="/root/Downloads"  # 自定义下载目录
+
+# 创建用户和组
+groupadd qbittorrent
+useradd -g qbittorrent -m qbittorrent
+
+# 创建下载目录并设置权限
+mkdir -p "$DOWNLOAD_DIR"
+chown qbittorrent:qbittorrent "$DOWNLOAD_DIR"
+chmod 777 "$DOWNLOAD_DIR"  # 设置所有用户可读、可写、可执行
+
+# 下载 qBittorrent-nox
+cd /root
+wget -O x86_64-qbittorrent-nox "$DOWNLOAD_URL"
+chmod +x x86_64-qbittorrent-nox
+
+# 将文件所有权设置为 qbittorrent 用户和组
+chown qbittorrent:qbittorrent "$INSTALL_PATH"
+
+# 运行一次以生成默认配置
+./x86_64-qbittorrent-nox &   # 后台运行
+sleep 2                      # 等待 2 秒
+echo "y" | pkill -P $$ -f x86_64-qbittorrent-nox || true  # 输入 "y" 并杀死子进程
+
+# 创建 OpenRC 服务文件
+cat << EOF > "$SERVICE_FILE"
+#!/sbin/openrc-run
+
+name="qbittorrent"
+description="qBittorrent Daemon"
+
+# 使用 sh -c 来设置 umask 000 并启动 qbittorrent
+command="/bin/sh"
+command_args="-c 'umask 000 && $INSTALL_PATH'"
+pidfile="/run/\${RC_SVCNAME}.pid"
+
+depend() {
+    need net
+    before local
+}
+
+start_pre() {
+    checkpath --directory --mode 0755 /run/qbittorrent
+}
+
+stop_post() {
+    rm -f /run/\${RC_SVCNAME}.pid
+}
+EOF
+
+# 给服务文件赋予执行权限
+chmod +x "$SERVICE_FILE"
+
+# 启用并启动 OpenRC 服务（添加到默认启动项）
+rc-update add qbittorrent default
+
+# 启动服务
+rc-service qbittorrent start
+
+# 优化 TCP 设置
+tcp_tune() {
+    echo "==> 优化 TCP 设置中..."
+
+    # 删除现有的 TCP 相关设置
+    sed -i '/net.ipv4.tcp_no_metrics_save/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_ecn/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_frto/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_mtu_probing/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_rfc1337/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_sack/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_fack/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_window_scaling/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_adv_win_scale/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_moderate_rcvbuf/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_rmem/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_wmem/d' /etc/sysctl.conf
+    sed -i '/net.core.rmem_max/d' /etc/sysctl.conf
+    sed -i '/net.core.wmem_max/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.udp_rmem_min/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.udp_wmem_min/d' /etc/sysctl.conf
+    sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
+    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+
+    # 添加新的 TCP 优化设置
+    cat >> /etc/sysctl.conf << EOF
+net.ipv4.tcp_no_metrics_save=1
+net.ipv4.tcp_ecn=0
+net.ipv4.tcp_frto=0
+net.ipv4.tcp_mtu_probing=0
+net.ipv4.tcp_rfc1337=1
+net.ipv4.tcp_sack=1
+net.ipv4.tcp_fack=1
+net.ipv4.tcp_window_scaling=2
+net.ipv4.tcp_adv_win_scale=2
+net.ipv4.tcp_moderate_rcvbuf=1
+net.ipv4.tcp_rmem=4096 65536 37331520
+net.ipv4.tcp_wmem=4096 65536 37331520
+net.core.rmem_max=37331520
+net.core.wmem_max=37331520
+net.ipv4.udp_rmem_min=8192
+net.ipv4.udp_wmem_min=8192
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+EOF
+
+    # 应用系统配置
+    sysctl -p
+    echo "TCP 设置已优化。"
+}
+
+# 执行 TCP 优化
+tcp_tune
+
+# 打印服务状态
+sleep 1
+rc-service qbittorrent status
+
+# 提示用户访问信息
+echo "qBittorrent 已成功安装和配置。"
+echo "请访问 http://<你的公网IP>:8080 进行登录。"
+echo "默认用户名: admin"
+echo "默认密码: adminadmin"
