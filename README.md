@@ -13,7 +13,21 @@ alpine 系统一键安装qbittorrent-install
 
    wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/alpinebbr3.sh -O alpinebbr3.sh && chmod +x alpinebbr3.sh && bash alpinebbr3.sh
    
+ 4.重启vps
 
+ 5.确认bbrv3是否启用
+
+ modinfo tcp_bbr
+
+ 如果未能启用请执行以下代码
+ echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+ echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+ sysctl -p
+ lsmod | grep bbr
+
+ 
+ 
+ 
  
  3.系统网络优化
 
