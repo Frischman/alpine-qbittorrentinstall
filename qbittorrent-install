@@ -40,10 +40,13 @@ fi
 echo "📥 安装必要依赖..."
 apk add --no-cache bash wget curl shadow openrc su-exec
 
+# === 确认 su-exec 路径 ===
+SUEXEC=$(which su-exec)
+
 # === 创建用户和下载目录 ===
 echo "👤 创建 qbittorrent 用户和下载目录..."
-addgroup -S qbittorrent
-adduser -S -G qbittorrent qbittorrent
+addgroup -S qbittorrent || true
+adduser -S -G qbittorrent qbittorrent || true
 mkdir -p /root/Downloads
 chown qbittorrent:qbittorrent /root/Downloads
 chmod 777 /root/Downloads
@@ -57,7 +60,7 @@ chown qbittorrent:qbittorrent qbittorrent-nox
 
 # === 运行一次以生成配置目录 ===
 echo "🛠️ 初始化配置..."
-su-exec qbittorrent /root/qbittorrent-nox & 
+$SUEXEC qbittorrent /root/qbittorrent-nox & 
 sleep 3
 pkill -f qbittorrent-nox || true
 
@@ -69,7 +72,7 @@ cat << EOF > /etc/init.d/qbittorrent
 name="qbittorrent"
 description="qBittorrent Daemon"
 
-command="/bin/su-exec"
+command="$SUEXEC"
 command_args="qbittorrent /root/qbittorrent-nox"
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
