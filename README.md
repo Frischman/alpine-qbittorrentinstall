@@ -20,11 +20,16 @@ alpine 系统一键安装qbittorrent-install
  modinfo tcp_bbr
 
  如果未能启用请执行以下代码
+ 
  echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+ 
  echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+ 
  sysctl -p
+ 
  lsmod | grep bbr
 
+sysctl net.core.default_qdisc
  
  
  
