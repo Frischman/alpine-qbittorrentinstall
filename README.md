@@ -10,7 +10,7 @@ alpine 系统一键安装qbittorrent-install
 
  2.下载并执行脚本
  
-    wget https://raw.githubusercontent.com/Frischman/alpine-3.18-qbittorrent-install-4.39/main/qbittorrent-install -O qbittorrent-install.sh && chmod +x qbittorrent-install.sh && bash qbittorrent-install.sh
+    wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/qbittorrent-install -O qbittorrent-install.sh && chmod +x qbittorrent-install.sh && bash qbittorrent-install.sh
 
  3.重启服务
     
