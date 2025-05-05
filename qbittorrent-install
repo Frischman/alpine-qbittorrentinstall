@@ -2,7 +2,6 @@
 
 set -e
 
-# === 基本信息 ===
 QBIT_VERSION="4.5.2"
 LIBTORRENT_VERSION="1.2.19"
 ARCH=$(uname -m)
@@ -18,54 +17,31 @@ else
     exit 1
 fi
 
-# === Alpine 版本检查 ===
-ALPINE_VERSION=$(cat /etc/alpine-release)
-echo "📦 当前 Alpine 版本为: $ALPINE_VERSION"
-
-MIN_VER="3.16"
-MAX_VER="3.20"
-
-apk_version_supported() {
-    ver=$(printf "%s\n%s\n" "$1" "$2" | sort -V | head -n1)
-    [ "$ver" = "$1" ]
-}
-
-if apk_version_supported "$MIN_VER" "$ALPINE_VERSION" && apk_version_supported "$ALPINE_VERSION" "$MAX_VER"; then
-    echo "✅ Alpine 版本兼容"
-else
-    echo "⚠️ 注意：脚本建议在 Alpine $MIN_VER - $MAX_VER 使用，当前版本未完全测试"
-fi
-
 # === 安装必要依赖 ===
-echo "📥 安装必要依赖..."
 apk add --no-cache bash wget curl shadow openrc su-exec
 
 # === 确认 su-exec 路径 ===
 SUEXEC=$(which su-exec)
 
 # === 创建用户和下载目录 ===
-echo "👤 创建 qbittorrent 用户和下载目录..."
 addgroup -S qbittorrent || true
 adduser -S -G qbittorrent qbittorrent || true
-mkdir -p /root/Downloads
-chown qbittorrent:qbittorrent /root/Downloads
-chmod 777 /root/Downloads
+mkdir -p /opt/qbittorrent /opt/qbittorrent/downloads
+chown -R qbittorrent:qbittorrent /opt/qbittorrent
 
 # === 下载 qBittorrent-nox 静态版本 ===
-echo "⬇️ 正在下载 qBittorrent-nox..."
-cd /root
+cd /opt/qbittorrent
 wget -O qbittorrent-nox "$BINARY_URL"
 chmod +x qbittorrent-nox
 chown qbittorrent:qbittorrent qbittorrent-nox
 
-# === 运行一次以生成配置目录 ===
+# === 初始化配置目录（~/.config/qBittorrent） ===
 echo "🛠️ 初始化配置..."
-$SUEXEC qbittorrent /root/qbittorrent-nox & 
+$SUEXEC qbittorrent ./qbittorrent-nox & 
 sleep 3
 pkill -f qbittorrent-nox || true
 
 # === 创建 OpenRC 启动服务 ===
-echo "🔧 创建 OpenRC 服务..."
 cat << EOF > /etc/init.d/qbittorrent
 #!/sbin/openrc-run
 
@@ -73,7 +49,7 @@ name="qbittorrent"
 description="qBittorrent Daemon"
 
 command="$SUEXEC"
-command_args="qbittorrent /root/qbittorrent-nox"
+command_args="qbittorrent /opt/qbittorrent/qbittorrent-nox"
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
 
@@ -98,8 +74,9 @@ rc-service qbittorrent start
 sleep 1
 rc-service qbittorrent status
 
-# === 提示用户访问方式 ===
-echo "✅ qBittorrent 已成功安装和配置"
-echo "🌐 请访问： http://<你的公网IP>:8080"
+# === 提示访问方式 ===
+echo "✅ qBittorrent 安装完成"
+echo "📁 下载目录：/opt/qbittorrent/downloads"
+echo "🌐 Web 界面：http://<你的公网IP>:8080"
 echo "🔐 默认用户名：admin"
 echo "🔐 默认密码：adminadmin"
