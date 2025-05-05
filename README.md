@@ -1,5 +1,7 @@
-# alpine-3.18-qbittorrent-install-4.39
-alpine 3.18 系统一键安装qbittorrent-install  4.39
+# alpine-qbittorrentinstall
+alpine 系统一键安装qbittorrent-install
+支持alpine 3.16-3.21系统
+支持x86_64版本和arm系统
 
 安装说明： 
  1.重启服务
