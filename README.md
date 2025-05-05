@@ -12,11 +12,13 @@ alpine 系统一键安装qbittorrent-install
  2.安装bbr_v3（仅支持alpine 3.19系统）
 
    wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/alpinebbr3.sh -O alpinebbr3.sh && chmod +x alpinebbr3.sh && bash alpinebbr3.sh
+   
 
  
  3.系统网络优化
 
    wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/system_optimization.sh -O system_optimization.sh && chmod +x system_optimization.sh && bash system_optimization.sh
+   
 
  4.重启vps  
  
