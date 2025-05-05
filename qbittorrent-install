@@ -1,45 +1,77 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-# 定义变量
-DOWNLOAD_URL="https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-4.3.9_v1.2.15/x86_64-qbittorrent-nox"
-INSTALL_PATH="/root/x86_64-qbittorrent-nox"
-SERVICE_FILE="/etc/init.d/qbittorrent"
-DOWNLOAD_DIR="/root/Downloads"  # 自定义下载目录
+# === 基本信息 ===
+QBIT_VERSION="4.5.2"
+LIBTORRENT_VERSION="1.2.19"
+ARCH=$(uname -m)
 
-# 创建用户和组
-groupadd qbittorrent
-useradd -g qbittorrent -m qbittorrent
+# === 架构判断 ===
+if [ "$ARCH" = "x86_64" ]; then
+    BINARY_URL="https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-${QBIT_VERSION}_v${LIBTORRENT_VERSION}/x86_64-qt5-qbittorrent-nox"
+elif echo "$ARCH" | grep -qE '^aarch64|armv7'; then
+    echo "⚠️ 暂不支持 ARM 架构的静态二进制下载链接，请手动替换 BINARY_URL。"
+    exit 1
+else
+    echo "❌ 未知或不支持的架构: $ARCH"
+    exit 1
+fi
 
-# 创建下载目录并设置权限
-mkdir -p "$DOWNLOAD_DIR"
-chown qbittorrent:qbittorrent "$DOWNLOAD_DIR"
-chmod 777 "$DOWNLOAD_DIR"  # 设置所有用户可读、可写、可执行
+# === Alpine 版本检查 ===
+ALPINE_VERSION=$(cat /etc/alpine-release)
+echo "📦 当前 Alpine 版本为: $ALPINE_VERSION"
 
-# 下载 qBittorrent-nox
+MIN_VER="3.16"
+MAX_VER="3.20"
+
+apk_version_supported() {
+    ver=$(printf "%s\n%s\n" "$1" "$2" | sort -V | head -n1)
+    [ "$ver" = "$1" ]
+}
+
+if apk_version_supported "$MIN_VER" "$ALPINE_VERSION" && apk_version_supported "$ALPINE_VERSION" "$MAX_VER"; then
+    echo "✅ Alpine 版本兼容"
+else
+    echo "⚠️ 注意：脚本建议在 Alpine $MIN_VER - $MAX_VER 使用，当前版本未完全测试"
+fi
+
+# === 安装必要依赖 ===
+echo "📥 安装必要依赖..."
+apk add --no-cache bash wget curl shadow openrc su-exec
+
+# === 创建用户和下载目录 ===
+echo "👤 创建 qbittorrent 用户和下载目录..."
+addgroup -S qbittorrent
+adduser -S -G qbittorrent qbittorrent
+mkdir -p /root/Downloads
+chown qbittorrent:qbittorrent /root/Downloads
+chmod 777 /root/Downloads
+
+# === 下载 qBittorrent-nox 静态版本 ===
+echo "⬇️ 正在下载 qBittorrent-nox..."
 cd /root
-wget -O x86_64-qbittorrent-nox "$DOWNLOAD_URL"
-chmod +x x86_64-qbittorrent-nox
+wget -O qbittorrent-nox "$BINARY_URL"
+chmod +x qbittorrent-nox
+chown qbittorrent:qbittorrent qbittorrent-nox
 
-# 将文件所有权设置为 qbittorrent 用户和组
-chown qbittorrent:qbittorrent "$INSTALL_PATH"
+# === 运行一次以生成配置目录 ===
+echo "🛠️ 初始化配置..."
+su-exec qbittorrent /root/qbittorrent-nox & 
+sleep 3
+pkill -f qbittorrent-nox || true
 
-# 运行一次以生成默认配置
-./x86_64-qbittorrent-nox &   # 后台运行
-sleep 2                      # 等待 2 秒
-echo "y" | pkill -P $$ -f x86_64-qbittorrent-nox || true  # 输入 "y" 并杀死子进程
-
-# 创建 OpenRC 服务文件
-cat << EOF > "$SERVICE_FILE"
+# === 创建 OpenRC 启动服务 ===
+echo "🔧 创建 OpenRC 服务..."
+cat << EOF > /etc/init.d/qbittorrent
 #!/sbin/openrc-run
 
 name="qbittorrent"
 description="qBittorrent Daemon"
 
-# 使用 sh -c 来设置 umask 000 并启动 qbittorrent
-command="/bin/sh"
-command_args="-c 'umask 000 && $INSTALL_PATH'"
+command="/bin/su-exec"
+command_args="qbittorrent /root/qbittorrent-nox"
+command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
 
 depend() {
@@ -56,75 +88,15 @@ stop_post() {
 }
 EOF
 
-# 给服务文件赋予执行权限
-chmod +x "$SERVICE_FILE"
-
-# 启用并启动 OpenRC 服务（添加到默认启动项）
+chmod +x /etc/init.d/qbittorrent
 rc-update add qbittorrent default
-
-# 启动服务
 rc-service qbittorrent start
 
-# 优化 TCP 设置
-tcp_tune() {
-    echo "==> 优化 TCP 设置中..."
-
-    # 删除现有的 TCP 相关设置
-    sed -i '/net.ipv4.tcp_no_metrics_save/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_ecn/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_frto/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_mtu_probing/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_rfc1337/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_sack/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_fack/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_window_scaling/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_adv_win_scale/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_moderate_rcvbuf/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_rmem/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_wmem/d' /etc/sysctl.conf
-    sed -i '/net.core.rmem_max/d' /etc/sysctl.conf
-    sed -i '/net.core.wmem_max/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.udp_rmem_min/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.udp_wmem_min/d' /etc/sysctl.conf
-    sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf
-    sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
-
-    # 添加新的 TCP 优化设置
-    cat >> /etc/sysctl.conf << EOF
-net.ipv4.tcp_no_metrics_save=1
-net.ipv4.tcp_ecn=0
-net.ipv4.tcp_frto=0
-net.ipv4.tcp_mtu_probing=0
-net.ipv4.tcp_rfc1337=1
-net.ipv4.tcp_sack=1
-net.ipv4.tcp_fack=1
-net.ipv4.tcp_window_scaling=2
-net.ipv4.tcp_adv_win_scale=2
-net.ipv4.tcp_moderate_rcvbuf=1
-net.ipv4.tcp_rmem=4096 65536 37331520
-net.ipv4.tcp_wmem=4096 65536 37331520
-net.core.rmem_max=37331520
-net.core.wmem_max=37331520
-net.ipv4.udp_rmem_min=8192
-net.ipv4.udp_wmem_min=8192
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
-EOF
-
-    # 应用系统配置
-    sysctl -p
-    echo "TCP 设置已优化。"
-}
-
-# 执行 TCP 优化
-tcp_tune
-
-# 打印服务状态
 sleep 1
 rc-service qbittorrent status
 
-# 提示用户访问信息
-echo "qBittorrent 已成功安装和配置。"
-echo "请访问 http://<你的公网IP>:8080 进行登录。"
-echo "默认用户名: admin"
-echo "默认密码: adminadmin"
+# === 提示用户访问方式 ===
+echo "✅ qBittorrent 已成功安装和配置"
+echo "🌐 请访问： http://<你的公网IP>:8080"
+echo "🔐 默认用户名：admin"
+echo "🔐 默认密码：adminadmin"
