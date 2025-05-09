@@ -17,8 +17,7 @@ apk update && apk add shadow wget curl bash
 ### 📶 2. 安装 BBR v3（仅适用于 Alpine 3.19）
 
 ```bash
-wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/alpinebbr3.sh -O alpinebbr3.sh \
-  && chmod +x alpinebbr3.sh && bash alpinebbr3.sh
+wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/alpinebbr3.sh -O alpinebbr3.sh && chmod +x alpinebbr3.sh && bash alpinebbr3.sh
 ```
 
 ---
@@ -57,8 +56,7 @@ sysctl net.core.default_qdisc
 ### 🚦 5. 执行系统网络优化
 
 ```bash
-wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/system_optimization.sh -O system_optimization.sh \
-  && chmod +x system_optimization.sh && bash system_optimization.sh
+wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/system_optimization.sh -O system_optimization.sh && chmod +x system_optimization.sh && bash system_optimization.sh
 ```
 
 ---
@@ -74,8 +72,7 @@ reboot
 ### 🧩 7. 安装 qBittorrent 4.5.2 + libtorrent 1.2.9
 
 ```bash
-wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/qbittorrent-install -O qbittorrent-install.sh \
-  && chmod +x qbittorrent-install.sh && bash qbittorrent-install.sh
+wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/qbittorrent-install -O qbittorrent-install.sh && chmod +x qbittorrent-install.sh && bash qbittorrent-install.sh
 ```
 
 ---
