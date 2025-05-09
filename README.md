@@ -14,7 +14,7 @@ apk update && apk add shadow wget curl bash
 
 ---
 
-### 📶 2. 安装 BBR v3（仅适用于 Alpine 3.19）
+### 📶 2. 安装 BBR v3（目前仅适用于 Alpine 3.19，其他版本跳过此步骤，直接开启bbr即可）
 
 ```bash
 wget https://raw.githubusercontent.com/Frischman/alpine-qbittorrentinstall/refs/heads/main/alpinebbr3.sh -O alpinebbr3.sh && chmod +x alpinebbr3.sh && bash alpinebbr3.sh
@@ -36,7 +36,7 @@ reboot
 modinfo tcp_bbr
 ```
 
-加载启用，请执行以下命令：
+加载启用BBRv3，请执行以下命令：
 
 ```bash
 echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
